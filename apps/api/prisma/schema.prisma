@@ -1,0 +1,192 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AdminRole {
+  OWNER
+  MANAGER
+}
+
+enum ReservationStatus {
+  NEW
+  CONTACTED
+  CONFIRMED
+  WAITLISTED
+  CANCELLED
+  CLOSED
+}
+
+model Admin {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  name         String
+  passwordHash String
+  role         AdminRole      @default(MANAGER)
+  active       Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  sessions     AdminSession[]
+  histories    ReservationStatusHistory[]
+}
+
+model AdminSession {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  csrfToken String
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  adminId   String
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@index([expiresAt])
+}
+
+model Property {
+  id           String   @id @default(cuid())
+  name         String
+  tagline      String
+  description  String
+  story        String
+  address      String
+  city         String
+  phone        String
+  email        String
+  whatsapp     String
+  mapUrl       String
+  heroImageUrl String
+  updatedAt    DateTime @updatedAt
+}
+
+model RoomType {
+  id             String        @id @default(cuid())
+  slug           String        @unique
+  name           String
+  description    String
+  monthlyPrice   Int
+  deposit        Int
+  capacity       Int           @default(1)
+  totalUnits     Int
+  availableUnits Int
+  imageUrl       String
+  featured       Boolean       @default(false)
+  active         Boolean       @default(true)
+  sortOrder      Int           @default(0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  reservations   Reservation[]
+
+  @@index([active, sortOrder])
+}
+
+model Amenity {
+  id          String  @id @default(cuid())
+  name        String
+  description String
+  icon        String
+  active      Boolean @default(true)
+  sortOrder   Int     @default(0)
+
+  @@index([active, sortOrder])
+}
+
+model GalleryItem {
+  id        String  @id @default(cuid())
+  title     String
+  imageUrl  String
+  alt       String
+  active    Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  @@index([active, sortOrder])
+}
+
+model MealPlan {
+  id          String  @id @default(cuid())
+  name        String
+  description String
+  days        String
+  active      Boolean @default(true)
+  sortOrder   Int     @default(0)
+
+  @@index([active, sortOrder])
+}
+
+model Testimonial {
+  id        String  @id @default(cuid())
+  quote     String
+  author    String
+  role      String
+  active    Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  @@index([active, sortOrder])
+}
+
+model Faq {
+  id        String  @id @default(cuid())
+  question  String
+  answer    String
+  active    Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  @@index([active, sortOrder])
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  fullName  String
+  email     String
+  phone     String?
+  message   String
+  createdAt DateTime @default(now())
+  handledAt DateTime?
+
+  @@index([createdAt])
+}
+
+model Reservation {
+  id           String            @id @default(cuid())
+  reference    String            @unique
+  fullName     String
+  email        String
+  phone        String
+  moveInDate   DateTime
+  stayMonths   Int
+  occupation   String?
+  message      String?
+  status       ReservationStatus @default(NEW)
+  adminNotes   String?
+  fingerprint  String?
+  fingerprintBucket String?           @unique
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  roomTypeId   String
+  roomType     RoomType          @relation(fields: [roomTypeId], references: [id])
+  history      ReservationStatusHistory[]
+
+  @@index([status, createdAt])
+  @@index([email, createdAt])
+  @@index([roomTypeId, moveInDate])
+}
+
+model ReservationStatusHistory {
+  id         String            @id @default(cuid())
+  fromStatus ReservationStatus?
+  toStatus   ReservationStatus
+  note       String?
+  createdAt  DateTime          @default(now())
+  reservationId String
+  reservation Reservation      @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  adminId    String?
+  admin      Admin?            @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([reservationId, createdAt])
+}

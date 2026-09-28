@@ -1,0 +1,72 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: verdant_house
+      POSTGRES_USER: verdant
+      POSTGRES_PASSWORD: verdant
+    ports:
+      - "5432:5432"
+    volumes:
+      - verdant_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U verdant -d verdant_house"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  setup:
+    build:
+      context: .
+      target: api
+    environment: &api-environment
+      DATABASE_URL: postgresql://verdant:verdant@postgres:5432/verdant_house
+      PORT: 4000
+      NODE_ENV: production
+      WEB_ORIGIN: http://localhost:5173
+      SESSION_SECRET: ${SESSION_SECRET:-local-docker-session-secret-change-before-deploying}
+      TRUST_PROXY_HOPS: 0
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@verdant.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-LocalDockerAdmin-2026!}
+    command: ["sh", "-c", "npm run db:deploy -w @verdant/api && npm run db:bootstrap -w @verdant/api"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      target: api
+    restart: unless-stopped
+    environment: *api-environment
+    ports:
+      - "4000:4000"
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/ready').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      target: web
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1/"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  verdant_pg:

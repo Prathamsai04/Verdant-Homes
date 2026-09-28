@@ -1,0 +1,28 @@
+{
+  "name": "verdant-house",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "npm run build -w @verdant/shared && concurrently \"npm run dev -w @verdant/api\" \"npm run dev -w @verdant/web\"",
+    "build": "npm run build -w @verdant/shared && npm run build -w @verdant/api && npm run build -w @verdant/web",
+    "typecheck": "npm run build -w @verdant/shared && npm run typecheck --workspaces --if-present",
+    "test": "npm run build -w @verdant/shared && npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "format": "prettier --write .",
+    "db:generate": "npm run db:generate -w @verdant/api",
+    "db:migrate": "npm run db:migrate -w @verdant/api",
+    "db:seed": "npm run db:seed -w @verdant/api"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.33.0",
+    "concurrently": "^9.2.0",
+    "eslint": "^9.33.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.39.1"
+  },
+  "engines": {"node": ">=22"}
+}
